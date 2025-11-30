@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const ORS_API_KEY = "YOUR_ORS_API_KEY_HERE"; // <- put your free ORS key here
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjcxMWQ3ZTYwZjg4ZTQzYjZiNjM0YmVjMjkxNjU5ZjNjIiwiaCI6Im11cm11cjY0In0="; // <- put your free ORS key here
 
 // ===== GLOBALS =====
 let map;
@@ -8,9 +8,10 @@ let startMarker = null;
 let endMarker = null;
 let stopMarkers = [];
 
-// ===== INIT MAP =====
+// ===== INIT =====
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
+  initThemeControls();
 
   const form = document.getElementById("trip-form");
   form.addEventListener("submit", handlePlanTrip);
@@ -20,11 +21,35 @@ function initMap() {
   // Rough center of US
   map = L.map("map").setView([39.8283, -98.5795], 4);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  // Dark tile layer to approximate Apple Maps dark mode
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     maxZoom: 19,
   }).addTo(map);
+}
+
+// ===== THEME & TOGGLE CONTROLS =====
+function initThemeControls() {
+  const themeButtons = document.querySelectorAll(".theme-btn");
+
+  themeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const theme = btn.getAttribute("data-theme");
+      document.body.setAttribute("data-theme", theme);
+
+      themeButtons.forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+    });
+  });
+
+  const toggles = document.querySelectorAll(".cc-toggle");
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      toggle.classList.toggle("cc-toggle-on");
+    });
+  });
 }
 
 // ===== UI HELPERS =====
@@ -95,16 +120,13 @@ async function handlePlanTrip(event) {
   setPlanning(true);
 
   try {
-    // 1) Geocode origin/destination
     const [origin, destination] = await Promise.all([
       geocodePlace(originText),
       geocodePlace(destinationText),
     ]);
 
-    // 2) Get route
     const route = await getRoute(origin, destination);
 
-    // 3) Draw route and markers
     routeLayer = L.geoJSON(route.geojson, {
       style: {
         weight: 4,
@@ -126,7 +148,6 @@ async function handlePlanTrip(event) {
         `<strong>Destination</strong><br>${destination.label || destinationText}`
       );
 
-    // 4) Compute stop points along the route
     const totalDistanceMiles = route.distMeters / 1609.344;
     const stopPoints = computeStopPoints(route.coords, usableRange);
 
@@ -135,10 +156,8 @@ async function handlePlanTrip(event) {
       return;
     }
 
-    // 5) For each stop point, find nearby gas station with Overpass
     const gasStops = await findGasStationsForStops(stopPoints);
 
-    // 6) Show markers & results
     addStopMarkers(gasStops);
     renderResultsWithStops(totalDistanceMiles, rangeMiles, gasStops);
   } catch (err) {
@@ -204,7 +223,10 @@ async function getRoute(origin, destination) {
   }
 
   const feature = data.features[0];
-  const coords = feature.geometry.coordinates.map(([lon, lat]) => ({ lon, lat }));
+  const coords = feature.geometry.coordinates.map(([lon, lat]) => ({
+    lon,
+    lat,
+  }));
   const distMeters = feature.properties.summary.distance;
 
   return {
@@ -251,7 +273,6 @@ function computeStopPoints(coords, usableRangeMiles) {
     cumulativeDistance += segDist;
 
     if (distanceSinceLastStop >= usableRangeMiles) {
-      // Place a stop at the current point on the route
       stops.push({
         lat: curr.lat,
         lon: curr.lon,
@@ -298,7 +319,6 @@ async function findGasStationsForStops(stops) {
 }
 
 async function findNearestGasStation(lat, lon, radiusMeters) {
-  // Overpass QL query: find amenity=fuel within radius
   const query = `
 [out:json][timeout:25];
 (
@@ -318,11 +338,10 @@ out body;
   }
 
   const data = await res.json();
-  if (!data.elements || data.elements.length === 0) {
+  if (!data.elements || !data.elements.length) {
     return null;
   }
 
-  // Pick the nearest station
   let best = data.elements[0];
   let bestDist = distanceInMiles(lat, lon, best.lat, best.lon);
 
