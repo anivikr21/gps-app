@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjcxMWQ3ZTYwZjg4ZTQzYjZiNjM0YmVjMjkxNjU5ZjNjIiwiaCI6Im11cm11cjY0In0="; // <- put your free ORS key here
+const ORS_API_KEY = "YOUR_ORS_API_KEY_HERE"; // <- put your free ORS key here
 
 // ===== GLOBALS =====
 let map;
@@ -21,8 +21,9 @@ function initMap() {
   map = L.map("map").setView([39.8283, -98.5795], 4);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
-    maxZoom: 19
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
+    maxZoom: 19,
   }).addTo(map);
 }
 
@@ -117,9 +118,13 @@ async function handlePlanTrip(event) {
       .addTo(map)
       .bindPopup(`<strong>Start</strong><br>${origin.label || originText}`);
 
-    endMarker = L.marker([destination.lat, destination.lon], { title: "Destination" })
+    endMarker = L.marker([destination.lat, destination.lon], {
+      title: "Destination",
+    })
       .addTo(map)
-      .bindPopup(`<strong>Destination</strong><br>${destination.label || destinationText}`);
+      .bindPopup(
+        `<strong>Destination</strong><br>${destination.label || destinationText}`
+      );
 
     // 4) Compute stop points along the route
     const totalDistanceMiles = route.distMeters / 1609.344;
@@ -335,7 +340,9 @@ out body;
   if (best.tags) {
     if (best.tags["addr:housenumber"] || best.tags["addr:street"]) {
       addressParts.push(
-        `${best.tags["addr:housenumber"] || ""} ${best.tags["addr:street"] || ""}`.trim()
+        `${best.tags["addr:housenumber"] || ""} ${
+          best.tags["addr:street"] || ""
+        }`.trim()
       );
     }
     if (best.tags["addr:city"]) addressParts.push(best.tags["addr:city"]);
